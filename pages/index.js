@@ -158,13 +158,15 @@ export default function Home() {
           <div style={S.tableWrap}>
             <table style={S.table}>
               <thead><tr>
-                {['user_id', 'personal', 'group_sales', 'carry_up', 'investor', 'business', 'influencer'].map(h =>
+                {['user_id', 'username', 'email', 'personal', 'group_sales', 'carry_up', 'investor', 'business', 'influencer'].map(h =>
                   <th key={h} style={S.th}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {details.map(d => (
                   <tr key={d.id}>
                     <td style={S.td}>{d.user_id}</td>
+                    <td style={S.td}>{d.username ?? '-'}</td>
+                    <td style={S.td}>{d.email ?? '-'}</td>
                     <td style={S.td}>{fmt(d.personal_deposit_amount)}</td>
                     <td style={S.td}>{fmt(d.group_sales_amount)}</td>
                     <td style={S.td}>{fmt(d.carry_up_amount)}</td>
@@ -173,7 +175,7 @@ export default function Home() {
                     <td style={{ ...S.td, fontWeight: 700 }}>{d.quantity_influencer_tickets}</td>
                   </tr>
                 ))}
-                {details.length === 0 && <tr><td style={S.td} colSpan={7}>No data</td></tr>}
+                {details.length === 0 && <tr><td style={S.td} colSpan={9}>No data</td></tr>}
               </tbody>
             </table>
           </div>
