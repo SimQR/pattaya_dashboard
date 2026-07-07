@@ -43,7 +43,7 @@ export default function Home() {
   const loadSnapshots = useCallback(async () => {
     setError(''); setBusy('list')
     try {
-      const body = await call('/api/snapshot?limit=50&order=desc')
+      const body = await call('/api/snapshot?limit=9999&order=desc')
       setSnapshots(body.data || [])
     } catch (e) { setError(e.message) } finally { setBusy('') }
   }, [call])
@@ -60,7 +60,7 @@ export default function Home() {
   const loadDetails = useCallback(async (id, p = 1, uid = '') => {
     setError(''); setBusy('detail'); setSelected(id); setPage(p)
     try {
-      const q = new URLSearchParams({ page: String(p), limit: '50' })
+      const q = new URLSearchParams({ page: String(p), limit: '9999' })
       if (uid) q.set('user_id', uid)
       const body = await call(`/api/snapshot/${id}?${q.toString()}`)
       setDetails(body.data || [])
