@@ -68,6 +68,36 @@ export default function Home() {
     } catch (e) { setError(e.message) } finally { setBusy('') }
   }, [call])
 
+  const downloadCsv = useCallback(() => {
+    if (!details.length) return
+    const cols = [
+      ['user_id', d => d.user_id],
+      ['username', d => d.username ?? ''],
+      ['email', d => d.email ?? ''],
+      ['personal', d => d.personal_deposit_amount],
+      ['group_sales', d => d.group_sales_amount],
+      ['carry_up', d => d.carry_up_amount],
+      ['investor', d => d.quantity_investor_tickets],
+      ['business', d => d.quantity_business_class_flight_tickets],
+      ['influencer', d => d.quantity_influencer_tickets],
+    ]
+    const esc = (v) => {
+      const s = v === null || v === undefined ? '' : String(v)
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const rows = [cols.map(c => c[0]).join(',')]
+    for (const d of details) rows.push(cols.map(c => esc(c[1](d))).join(','))
+    const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `snapshot-${selected}${userId ? `-user-${userId}` : ''}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }, [details, selected, userId])
+
   useEffect(() => { loadSnapshots() }, [loadSnapshots])
 
   return (
@@ -154,6 +184,7 @@ export default function Home() {
             <input value={userId} onChange={(e) => setUserId(e.target.value)}
               placeholder="Filter by user_id" style={S.input} />
             <button onClick={() => loadDetails(selected, 1, userId)} style={S.btnGhost}>Search</button>
+            <button onClick={downloadCsv} disabled={!details.length} style={S.btnGhost}>Download CSV</button>
           </div>
           <div style={S.tableWrap}>
             <table style={S.table}>
