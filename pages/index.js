@@ -15,6 +15,7 @@ export default function Home() {
   const [meta, setMeta] = useState(null)
   const [page, setPage] = useState(1)
   const [userId, setUserId] = useState('')
+  const [version, setVersion] = useState('v1') // 'v1' | 'v2' — which campaign API pipeline to hit
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('dash_pw') : ''
@@ -43,15 +44,15 @@ export default function Home() {
   const loadSnapshots = useCallback(async () => {
     setError(''); setBusy('list')
     try {
-      const body = await call('/api/snapshot?limit=9999&order=desc')
+      const body = await call(`/api/snapshot?limit=9999&order=desc&version=${version}`)
       setSnapshots(body.data || [])
     } catch (e) { setError(e.message) } finally { setBusy('') }
-  }, [call])
+  }, [call, version])
 
   const generate = async () => {
     setError(''); setGenResult(null); setBusy('gen')
     try {
-      const body = await call('/api/snapshot', { method: 'POST' })
+      const body = await call(`/api/snapshot?version=${version}`, { method: 'POST' })
       setGenResult(body.data || body)
       await loadSnapshots()
     } catch (e) { setError(e.message) } finally { setBusy('') }
@@ -60,13 +61,20 @@ export default function Home() {
   const loadDetails = useCallback(async (id, p = 1, uid = '') => {
     setError(''); setBusy('detail'); setSelected(id); setPage(p)
     try {
-      const q = new URLSearchParams({ page: String(p), limit: '9999' })
+      const q = new URLSearchParams({ page: String(p), limit: '9999', version })
       if (uid) q.set('user_id', uid)
       const body = await call(`/api/snapshot/${id}?${q.toString()}`)
       setDetails(body.data || [])
       setMeta(body.meta || null)
     } catch (e) { setError(e.message) } finally { setBusy('') }
-  }, [call])
+  }, [call, version])
+
+  // Switching pipeline resets the view; loadSnapshots reloads via its version dep.
+  const onVersion = (v) => {
+    if (v === version) return
+    setVersion(v)
+    setSelected(null); setDetails([]); setMeta(null); setGenResult(null); setError('')
+  }
 
   const downloadCsv = useCallback(() => {
     if (!details.length) return
@@ -105,8 +113,24 @@ export default function Home() {
       <div style={S.bgGlowA} />
       <div style={S.bgGlowB} />
       <header style={S.hero}>
-        <div style={S.eyebrow}>Campaign operations</div>
-        <h1 style={S.h1}>Pattaya Campaign — Snapshot Dashboard</h1>
+        <div style={S.heroTop}>
+          <div>
+            <div style={S.eyebrow}>Campaign operations</div>
+            <h1 style={S.h1}>Pattaya Campaign — Snapshot Dashboard</h1>
+          </div>
+          <div style={S.versionToggle} role="group" aria-label="API version">
+            {['v1', 'v2'].map((v) => (
+              <button
+                key={v}
+                onClick={() => onVersion(v)}
+                style={version === v ? S.segActive : S.seg}
+                aria-pressed={version === v}
+              >
+                {v.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
         <p style={S.subtitle}>
           Generate snapshots, inspect historical runs, and drill into user-level metrics from the staging API.
         </p>
@@ -114,6 +138,7 @@ export default function Home() {
           <span style={S.chip}>Staging API</span>
           <span style={S.chip}>Password gated</span>
           <span style={S.chip}>Snapshot history</span>
+          <span style={{ ...S.chip, ...S.chipVersion }}>Pipeline: {version.toUpperCase()}</span>
         </div>
       </header>
 
@@ -260,6 +285,51 @@ const S = {
     maxWidth: 1120,
     margin: '0 auto 18px',
     padding: '12px 4px 4px',
+  },
+  heroTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  versionToggle: {
+    display: 'inline-flex',
+    padding: 4,
+    gap: 4,
+    borderRadius: 999,
+    background: 'rgba(255,255,255,0.72)',
+    border: '1px solid rgba(148,163,184,0.4)',
+    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)',
+    backdropFilter: 'blur(12px)',
+    flexShrink: 0,
+  },
+  seg: {
+    padding: '8px 18px',
+    borderRadius: 999,
+    border: 0,
+    background: 'transparent',
+    color: '#52657b',
+    fontSize: 13,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    cursor: 'pointer',
+  },
+  segActive: {
+    padding: '8px 18px',
+    borderRadius: 999,
+    border: 0,
+    background: 'linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)',
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    cursor: 'pointer',
+    boxShadow: '0 8px 18px rgba(37, 99, 235, 0.28)',
+  },
+  chipVersion: {
+    background: 'linear-gradient(135deg, rgba(219, 234, 254, 0.95) 0%, rgba(238, 242, 255, 0.95) 100%)',
+    color: '#1e3a8a',
+    border: '1px solid rgba(147, 197, 253, 0.6)',
   },
   eyebrow: {
     display: 'inline-flex',

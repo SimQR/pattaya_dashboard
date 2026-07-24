@@ -10,6 +10,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: true, message: 'Method not allowed' })
   }
 
-  const { id, ...rest } = req.query
-  return forward(res, { path: `/snapshot/${encodeURIComponent(id)}`, method: 'GET', query: rest })
+  const { id, version, ...rest } = req.query
+  const base = version === 'v2' ? '/snapshot-v2' : '/snapshot'
+  return forward(res, { path: `${base}/${encodeURIComponent(id)}`, method: 'GET', query: rest })
 }
