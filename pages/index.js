@@ -316,7 +316,7 @@ const S = {
     pointerEvents: 'none',
   },
   hero: {
-    maxWidth: 1120,
+    maxWidth: 1280,
     margin: '0 auto 18px',
     padding: '12px 4px 4px',
   },
@@ -394,7 +394,7 @@ const S = {
     backdropFilter: 'blur(12px)',
   },
   card: {
-    maxWidth: 1120,
+    maxWidth: 1280,
     margin: '0 auto 18px',
     background: 'rgba(255, 255, 255, 0.82)',
     border: '1px solid rgba(148, 163, 184, 0.28)',
