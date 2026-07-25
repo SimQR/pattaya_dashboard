@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 const fmt = (n) => (n === null || n === undefined ? '-' : Number(n).toLocaleString())
 const fmtEpoch = (s) => (s ? new Date(Number(s) * 1000).toLocaleString() : '-')
 
+const LIST_PAGE_SIZE = 10 // snapshots per page in the list (client-side)
+
 export default function Home() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState('')
@@ -14,6 +16,7 @@ export default function Home() {
   const [details, setDetails] = useState([])
   const [meta, setMeta] = useState(null)
   const [page, setPage] = useState(1)
+  const [listPage, setListPage] = useState(1)
   const [userId, setUserId] = useState('')
   const [version, setVersion] = useState('v1') // 'v1' | 'v2' — which campaign API pipeline to hit
 
@@ -46,6 +49,7 @@ export default function Home() {
     try {
       const body = await call(`/api/snapshot?limit=9999&order=desc&version=${version}`)
       setSnapshots(body.data || [])
+      setListPage(1)
     } catch (e) { setError(e.message) } finally { setBusy('') }
   }, [call, version])
 
@@ -73,7 +77,7 @@ export default function Home() {
   const onVersion = (v) => {
     if (v === version) return
     setVersion(v)
-    setSelected(null); setDetails([]); setMeta(null); setGenResult(null); setError('')
+    setSelected(null); setDetails([]); setMeta(null); setGenResult(null); setError(''); setListPage(1)
   }
 
   const downloadCsv = useCallback(() => {
@@ -107,6 +111,10 @@ export default function Home() {
   }, [details, selected, userId])
 
   useEffect(() => { loadSnapshots() }, [loadSnapshots])
+
+  const listTotalPages = Math.max(1, Math.ceil(snapshots.length / LIST_PAGE_SIZE))
+  const listPageSafe = Math.min(listPage, listTotalPages)
+  const pagedSnapshots = snapshots.slice((listPageSafe - 1) * LIST_PAGE_SIZE, listPageSafe * LIST_PAGE_SIZE)
 
   return (
     <main style={S.main}>
@@ -184,7 +192,7 @@ export default function Home() {
                 <th key={h} style={S.th}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {snapshots.map(s => (
+              {pagedSnapshots.map(s => (
                 <tr key={s.id} style={selected === s.id ? S.trActive : undefined}>
                   <td style={S.td}>{s.id}</td>
                   <td style={S.td}>{s.sequence_no}</td>
@@ -199,6 +207,15 @@ export default function Home() {
             </tbody>
           </table>
         </div>
+        {snapshots.length > 0 && (
+          <div style={S.rowBetween}>
+            <span style={S.muted}>Total {fmt(snapshots.length)} snapshots · Page {listPageSafe}/{listTotalPages}</span>
+            <span>
+              <button disabled={listPageSafe <= 1} onClick={() => setListPage(listPageSafe - 1)} style={S.btnSm}>Previous</button>
+              <button disabled={listPageSafe >= listTotalPages} onClick={() => setListPage(listPageSafe + 1)} style={S.btnSm}>Next</button>
+            </span>
+          </div>
+        )}
       </section>
 
       {/* 3. Details */}
