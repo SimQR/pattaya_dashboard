@@ -5,6 +5,14 @@ const fmtEpoch = (s) => (s ? new Date(Number(s) * 1000).toLocaleString() : '-')
 
 const LIST_PAGE_SIZE = 10 // snapshots per page in the list (client-side)
 
+// Client-side filter: match user_id (exact/substring) or email (substring), case-insensitive.
+const matchDetail = (d, q) => {
+  const s = q.trim().toLowerCase()
+  if (!s) return true
+  return String(d.user_id ?? '').toLowerCase().includes(s) ||
+    String(d.email ?? '').toLowerCase().includes(s)
+}
+
 export default function Home() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState('')
@@ -62,11 +70,10 @@ export default function Home() {
     } catch (e) { setError(e.message) } finally { setBusy('') }
   }
 
-  const loadDetails = useCallback(async (id, p = 1, uid = '') => {
-    setError(''); setBusy('detail'); setSelected(id); setPage(p)
+  const loadDetails = useCallback(async (id, p = 1) => {
+    setError(''); setBusy('detail'); setSelected(id); setPage(p); setUserId('')
     try {
       const q = new URLSearchParams({ page: String(p), limit: '9999', version })
-      if (uid) q.set('user_id', uid)
       const body = await call(`/api/snapshot/${id}?${q.toString()}`)
       setDetails(body.data || [])
       setMeta(body.meta || null)
@@ -81,11 +88,13 @@ export default function Home() {
   }
 
   const downloadCsv = useCallback(() => {
-    if (!details.length) return
+    const rowsData = details.filter(d => matchDetail(d, userId))
+    if (!rowsData.length) return
     const cols = [
       ['user_id', d => d.user_id],
       ['username', d => d.username ?? ''],
       ['email', d => d.email ?? ''],
+      ['partnership', d => d.partner_email ?? ''],
       ['personal', d => d.personal_deposit_amount],
       ['group_sales', d => d.group_sales_amount],
       ['carry_up', d => d.carry_up_amount],
@@ -98,12 +107,13 @@ export default function Home() {
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
     }
     const rows = [cols.map(c => c[0]).join(',')]
-    for (const d of details) rows.push(cols.map(c => esc(c[1](d))).join(','))
+    for (const d of rowsData) rows.push(cols.map(c => esc(c[1](d))).join(','))
     const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `snapshot-${selected}${userId ? `-user-${userId}` : ''}.csv`
+    const suffix = userId.trim() ? `-filter-${userId.trim().replace(/[^a-z0-9@._-]/gi, '_')}` : ''
+    a.download = `snapshot-${selected}${suffix}.csv`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -115,6 +125,8 @@ export default function Home() {
   const listTotalPages = Math.max(1, Math.ceil(snapshots.length / LIST_PAGE_SIZE))
   const listPageSafe = Math.min(listPage, listTotalPages)
   const pagedSnapshots = snapshots.slice((listPageSafe - 1) * LIST_PAGE_SIZE, listPageSafe * LIST_PAGE_SIZE)
+
+  const filteredDetails = details.filter(d => matchDetail(d, userId))
 
   return (
     <main style={S.main}>
@@ -200,7 +212,7 @@ export default function Home() {
                   <td style={S.td}>{s.period_start === 0 ? 'From start' : fmtEpoch(s.period_start)}</td>
                   <td style={S.td}>{fmtEpoch(s.period_end)}</td>
                   <td style={S.td}>{fmtEpoch(s.created_at)}</td>
-                  <td style={S.td}><button onClick={() => loadDetails(s.id, 1, '')} style={S.btnSm}>View details</button></td>
+                  <td style={S.td}><button onClick={() => loadDetails(s.id, 1)} style={S.btnSm}>View details</button></td>
                 </tr>
               ))}
               {snapshots.length === 0 && <tr><td style={S.td} colSpan={7}>No snapshots yet</td></tr>}
@@ -224,22 +236,23 @@ export default function Home() {
           <h2 style={S.h2}>3. Snapshot #{selected} Details (GET /snapshot/:id)</h2>
           <div style={S.row}>
             <input value={userId} onChange={(e) => setUserId(e.target.value)}
-              placeholder="Filter by user_id" style={S.input} />
-            <button onClick={() => loadDetails(selected, 1, userId)} style={S.btnGhost}>Search</button>
-            <button onClick={downloadCsv} disabled={!details.length} style={S.btnGhost}>Download CSV</button>
+              placeholder="Filter by user_id or email" style={S.input} />
+            {userId && <button onClick={() => setUserId('')} style={S.btnGhost}>Clear</button>}
+            <button onClick={downloadCsv} disabled={!filteredDetails.length} style={S.btnGhost}>Download CSV</button>
           </div>
           <div style={S.tableWrap}>
             <table style={S.table}>
               <thead><tr>
-                {['user_id', 'username', 'email', 'personal', 'group_sales', 'carry_up', 'investor', 'business', 'influencer'].map(h =>
+                {['user_id', 'username', 'email', 'partnership', 'personal', 'group_sales', 'carry_up', 'investor', 'business', 'influencer'].map(h =>
                   <th key={h} style={S.th}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {details.map(d => (
+                {filteredDetails.map(d => (
                   <tr key={d.id}>
                     <td style={S.td}>{d.user_id}</td>
                     <td style={S.td}>{d.username ?? '-'}</td>
                     <td style={S.td}>{d.email ?? '-'}</td>
+                    <td style={S.td}>{d.partner_email ?? '-'}</td>
                     <td style={S.td}>{fmt(d.personal_deposit_amount)}</td>
                     <td style={S.td}>{fmt(d.group_sales_amount)}</td>
                     <td style={S.td}>{fmt(d.carry_up_amount)}</td>
@@ -248,16 +261,20 @@ export default function Home() {
                     <td style={{ ...S.td, fontWeight: 700 }}>{d.quantity_influencer_tickets}</td>
                   </tr>
                 ))}
-                {details.length === 0 && <tr><td style={S.td} colSpan={9}>No data</td></tr>}
+                {filteredDetails.length === 0 && <tr><td style={S.td} colSpan={10}>{details.length ? 'No match' : 'No data'}</td></tr>}
               </tbody>
             </table>
           </div>
           {meta && (
             <div style={S.rowBetween}>
-              <span style={S.muted}>Total {fmt(meta.total_item)} items · Page {meta.current_page}/{meta.total_page}</span>
+              <span style={S.muted}>
+                {userId.trim()
+                  ? `Showing ${fmt(filteredDetails.length)} of ${fmt(meta.total_item)} items`
+                  : `Total ${fmt(meta.total_item)} items · Page ${meta.current_page}/${meta.total_page}`}
+              </span>
               <span>
-                <button disabled={page <= 1} onClick={() => loadDetails(selected, page - 1, userId)} style={S.btnSm}>Previous</button>
-                <button disabled={meta.total_page && page >= meta.total_page} onClick={() => loadDetails(selected, page + 1, userId)} style={S.btnSm}>Next</button>
+                <button disabled={page <= 1} onClick={() => loadDetails(selected, page - 1)} style={S.btnSm}>Previous</button>
+                <button disabled={meta.total_page && page >= meta.total_page} onClick={() => loadDetails(selected, page + 1)} style={S.btnSm}>Next</button>
               </span>
             </div>
           )}
