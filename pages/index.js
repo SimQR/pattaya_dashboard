@@ -15,6 +15,7 @@ const matchDetail = (d, q) => {
 
 export default function Home() {
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [genResult, setGenResult] = useState(null)
@@ -165,8 +166,11 @@ export default function Home() {
       <section style={S.card}>
         <label style={S.label}>Dashboard password (if enabled)</label>
         <div style={S.row}>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+          <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder="Leave blank to disable" style={S.input} />
+          <button onClick={() => setShowPassword(v => !v)} style={S.btnGhost} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+            {showPassword ? '🙈 Hide' : '👁 Show'}
+          </button>
           <button onClick={savePassword} style={S.btnGhost}>Save</button>
         </div>
       </section>
