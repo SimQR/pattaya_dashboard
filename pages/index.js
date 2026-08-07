@@ -96,6 +96,7 @@ export default function Home() {
       ['username', d => d.username ?? ''],
       ['email', d => d.email ?? ''],
       ['partnership', d => d.partner_email ?? ''],
+      ['rank', d => d.affiliate_rank_number ?? ''],
       ['personal', d => d.personal_deposit_amount],
       ['group_sales', d => d.group_sales_amount],
       ['carry_up', d => d.carry_up_amount],
@@ -247,7 +248,7 @@ export default function Home() {
           <div style={S.tableWrap}>
             <table style={S.table}>
               <thead><tr>
-                {['user_id', 'username', 'email', 'partnership', 'personal', 'group_sales', 'carry_up', 'investor', 'business', 'influencer'].map(h =>
+                {['user_id', 'username', 'email', 'partnership', 'rank', 'personal', 'group_sales', 'carry_up', 'investor', 'business', 'influencer'].map(h =>
                   <th key={h} style={S.th}>{h}</th>)}
               </tr></thead>
               <tbody>
@@ -257,6 +258,7 @@ export default function Home() {
                     <td style={S.td}>{d.username ?? '-'}</td>
                     <td style={S.td}>{d.email ?? '-'}</td>
                     <td style={S.td}>{d.partner_email ?? '-'}</td>
+                    <td style={S.td}>{d.affiliate_rank_number ?? '-'}</td>
                     <td style={S.td}>{fmt(d.personal_deposit_amount)}</td>
                     <td style={S.td}>{fmt(d.group_sales_amount)}</td>
                     <td style={S.td}>{fmt(d.carry_up_amount)}</td>
@@ -265,7 +267,7 @@ export default function Home() {
                     <td style={{ ...S.td, fontWeight: 700 }}>{d.quantity_influencer_tickets}</td>
                   </tr>
                 ))}
-                {filteredDetails.length === 0 && <tr><td style={S.td} colSpan={10}>{details.length ? 'No match' : 'No data'}</td></tr>}
+                {filteredDetails.length === 0 && <tr><td style={S.td} colSpan={11}>{details.length ? 'No match' : 'No data'}</td></tr>}
               </tbody>
             </table>
           </div>
